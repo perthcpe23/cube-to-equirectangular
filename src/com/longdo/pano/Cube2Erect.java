@@ -13,10 +13,22 @@ public class Cube2Erect {
 	// TODO: Enable this will avoid aliasing effects, but get a blurry image
 	boolean doAvgColor = false;
 	
+	/**
+	 * Convert 6 images of cube face2 to a single equirectangular image.
+	 * @param imBack
+	 * @param imBottom
+	 * @param imFront
+	 * @param imLeft
+	 * @param imRight
+	 * @param imTop
+	 * @return equirectangular image
+	 * @throws IOException
+	 */
     public BufferedImage convert(BufferedImage imBack,BufferedImage imBottom,BufferedImage imFront,BufferedImage imLeft,BufferedImage imRight,BufferedImage imTop) throws IOException{
         int w = imBack.getWidth();
         int h = imBack.getHeight();
-        
+		
+		// output image size, will be decrease 90% later
         int finalW = w*4;
         int finalH = h*2;
         
@@ -28,22 +40,25 @@ public class Cube2Erect {
         int[] targetColor = new int[3];
         
         for (int j=0;j<finalH;j++) {
-        		for (int i=0;i<finalW;i++) {
-        			float u = 2*i/fW - 1;
-        			float v = 2*j/fH - 1;
-        			
-        			double theta = u * Math.PI;
-        			double phi = v * Math.PI / 2;
-        			
-        			double x = Math.cos(phi)*Math.cos(theta);
-        			double y = Math.sin(phi);
-        			double z = Math.cos(phi)*Math.sin(theta);
-        			
-        			// find appropriate color from cube faces
-        			targetColor = findColor(imBack, imBottom, imFront, imLeft, imRight, imTop, w, h, targetColor, x, y, z);
-        			
-        			imOutput.getRaster().setPixel(i, j, targetColor);
-        		}
+			for (int i=0;i<finalW;i++) {
+				// value range from -1 to 1
+				float u = 2*i/fW - 1;
+				float v = 2*j/fH - 1;
+				
+				// convert to horizontal and vertical angle
+				double theta = u * Math.PI;
+				double phi = v * Math.PI / 2;
+				
+				// find corresponding location on sphere (inside a cube)
+				double x = Math.cos(phi)*Math.cos(theta);
+				double y = Math.sin(phi);
+				double z = Math.cos(phi)*Math.sin(theta);
+				
+				// find appropriate color from cube faces
+				targetColor = findColor(imBack, imBottom, imFront, imLeft, imRight, imTop, w, h, targetColor, x, y, z);
+				
+				imOutput.getRaster().setPixel(i, j, targetColor);
+			}
         }
         
         imOutput = smooth(imOutput);
@@ -57,8 +72,10 @@ public class Cube2Erect {
 		double absY = Math.abs(y);
 		double absZ = Math.abs(z);
 		
-		if(absX > absY && absX > absZ) { // left or right
+		if(absX > absY && absX > absZ) { // on left or right face
 			boolean isLeft = x < 0;
+
+			// intersection point on x plane
 			z /= absX;
 			y /= absX;
 			
@@ -81,8 +98,10 @@ public class Cube2Erect {
 			
 			selectColor(w, h, targetColor, target, xx, yy);
 		}
-		else if(absY > absX && absY > absZ) { // top or bottom
+		else if(absY > absX && absY > absZ) { // on top or bottom face
 			boolean isTop = y < 0;
+
+			// intersection point on y plane
 			z /= absY;
 			x /= absY;
 			
@@ -105,8 +124,10 @@ public class Cube2Erect {
 			
 			selectColor(w, h, targetColor, target, xx, yy);
 		}
-		else { // front or back
+		else { // on front or back face
 			boolean isFront = z > 0;
+
+			// intersection point on z plane
 			y /= absZ;
 			x /= absZ;
 			
@@ -143,6 +164,7 @@ public class Cube2Erect {
 		return after;
 	}
 	
+	// 3x3 average color
 	private void selectColor(int w, int h, int[] targetColor, BufferedImage target, int xx, int yy) {
 		if(doAvgColor && xx > 0 && xx < w-1 && yy > 0 && yy < h-1) {
 			int[] color = new int[27];
@@ -166,14 +188,14 @@ public class Cube2Erect {
         		Cube2Erect c = new Cube2Erect();
         		
         		BufferedImage imBack = ImageIO.read(new File(args[0]));
-            BufferedImage imBottom = ImageIO.read(new File(args[1]));
-            BufferedImage imFront = ImageIO.read(new File(args[2]));
-            BufferedImage imLeft = ImageIO.read(new File(args[3]));
-            BufferedImage imRight = ImageIO.read(new File(args[4]));
-            BufferedImage imTop = ImageIO.read(new File(args[5]));
-                
-			BufferedImage bi = c.convert(imBack,imBottom,imFront,imLeft,imRight,imTop);
-			ImageIO.write(bi, "JPG", new File(args[6]));
+				BufferedImage imBottom = ImageIO.read(new File(args[1]));
+				BufferedImage imFront = ImageIO.read(new File(args[2]));
+				BufferedImage imLeft = ImageIO.read(new File(args[3]));
+				BufferedImage imRight = ImageIO.read(new File(args[4]));
+				BufferedImage imTop = ImageIO.read(new File(args[5]));
+					
+				BufferedImage bi = c.convert(imBack,imBottom,imFront,imLeft,imRight,imTop);
+				ImageIO.write(bi, "JPG", new File(args[6]));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
