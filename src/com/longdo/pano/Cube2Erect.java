@@ -79,7 +79,7 @@ public class Cube2Erect {
 			z /= absX;
 			y /= absX;
 			
-			if(!isLeft) {
+			if(isLeft) {
 				z = -z;
 			}
 			
@@ -105,7 +105,7 @@ public class Cube2Erect {
 			z /= absY;
 			x /= absY;
 			
-			if(!isTop) {
+			if(isTop) {
 				z = -z;
 			}
 			
@@ -125,7 +125,7 @@ public class Cube2Erect {
 			selectColor(w, h, targetColor, target, xx, yy);
 		}
 		else { // on front or back face
-			boolean isFront = z > 0;
+			boolean isFront = z < 0;
 
 			// intersection point on z plane
 			y /= absZ;
