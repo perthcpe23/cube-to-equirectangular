@@ -29,3 +29,6 @@ Example cube faces:
 Example output:
 <br/>
 <img src="https://github.com/perthcpe23/cube-to-equirectangular/raw/master/output.jpg" width="1024"><br/>
+
+### Contact
+perth.s28@gmail.com
