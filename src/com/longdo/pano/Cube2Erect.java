@@ -10,20 +10,11 @@ import javax.imageio.ImageIO;
 
 public class Cube2Erect {
 
-	// TODO: Enable this will avoid aliasing effects, but get a blurry image
+	// Enable this will reduce aliasing effects, but result in more blurry image.
 	boolean doAvgColor = false;
 
 	/**
 	 * Convert 6 images of cube face2 to a single equirectangular image.
-	 * 
-	 * @param imBack
-	 * @param imBottom
-	 * @param imFront
-	 * @param imLeft
-	 * @param imRight
-	 * @param imTop
-	 * @return equirectangular image
-	 * @throws IOException
 	 */
 	public BufferedImage convert(BufferedImage imBack, BufferedImage imBottom, BufferedImage imFront,
 			BufferedImage imLeft, BufferedImage imRight, BufferedImage imTop) throws IOException {
@@ -38,8 +29,6 @@ public class Cube2Erect {
 
 		float fW = finalW;
 		float fH = finalH;
-
-		int[] targetColor = new int[3];
 
 		for (int j = 0; j < finalH; j++) {
 			for (int i = 0; i < finalW; i++) {
@@ -57,7 +46,7 @@ public class Cube2Erect {
 				double z = Math.cos(phi) * Math.sin(theta);
 
 				// find appropriate color from cube faces
-				targetColor = findColor(imBack, imBottom, imFront, imLeft, imRight, imTop, w, h, targetColor, x, y, z);
+				int[] targetColor = findColor(imBack, imBottom, imFront, imLeft, imRight, imTop, w, h, x, y, z);
 
 				imOutput.getRaster().setPixel(i, j, targetColor);
 			}
@@ -69,11 +58,12 @@ public class Cube2Erect {
 	}
 
 	private int[] findColor(BufferedImage imBack, BufferedImage imBottom, BufferedImage imFront, BufferedImage imLeft,
-			BufferedImage imRight, BufferedImage imTop, int w, int h, int[] targetColor, double x, double y, double z) {
+			BufferedImage imRight, BufferedImage imTop, int w, int h, double x, double y, double z) {
 		BufferedImage target;
 		double absX = Math.abs(x);
 		double absY = Math.abs(y);
 		double absZ = Math.abs(z);
+		int[] targetColor = new int[3];
 
 		if (absX > absY && absX > absZ) { // on left or right face
 			boolean isLeft = x < 0;
@@ -152,6 +142,7 @@ public class Cube2Erect {
 	}
 
 	private BufferedImage smooth(BufferedImage before) {
+		// scale down help reducing aliasing effect
 		double scale = 0.5;
 		BufferedImage after = new BufferedImage((int) (before.getWidth() * scale), (int) (before.getHeight() * scale),
 				BufferedImage.TYPE_INT_RGB);
