@@ -30,5 +30,8 @@ Example output:
 <br/>
 <img src="https://github.com/perthcpe23/cube-to-equirectangular/raw/master/output.jpg" width="1024"><br/>
 
+<b>Extra tips</b><br/>
+View equirectangular image using Longdo Panorama API. Try your output.jpg by drag-and-drop it on a panorama scene in <a href="https://api.longdo.com/pano/" target="_blank">a demo website</a>. 
+
 ### Contact
 perth.s28@gmail.com
