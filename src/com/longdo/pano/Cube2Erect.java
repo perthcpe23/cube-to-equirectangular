@@ -22,6 +22,7 @@ public class Cube2Erect {
 		int h = imBack.getHeight();
 
 		// output image size, render big at first, then reduce this size by 50% (anti-aliasing)
+		// reduce these multiply factors will dramatically reduce processing time but with a smaller output image
 		int finalW = w * 8;
 		int finalH = h * 4;
 
