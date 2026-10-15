@@ -3,6 +3,7 @@ package com.longdo.pano;
 import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
+import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.IOException;
 
@@ -16,8 +17,16 @@ public class Cube2Erect {
 	/**
 	 * Convert 6 images of cube face2 to a single equirectangular image.
 	 */
-	public BufferedImage convert(BufferedImage imBack, BufferedImage imBottom, BufferedImage imFront,
-			BufferedImage imLeft, BufferedImage imRight, BufferedImage imTop) throws IOException {
+	public BufferedImage convert(
+		BufferedImage imBack,
+		BufferedImage imBottom,
+		BufferedImage imFront,
+		BufferedImage imLeft,
+		BufferedImage imRight,
+		BufferedImage imTop
+	) throws IOException {
+		long startTime = System.currentTimeMillis();
+
 		int w = imBack.getWidth();
 		int h = imBack.getHeight();
 
@@ -26,40 +35,76 @@ public class Cube2Erect {
 		int finalW = w * 8;
 		int finalH = h * 4;
 
-		BufferedImage imOutput = new BufferedImage(finalW, finalH, BufferedImage.TYPE_INT_RGB);
-
 		float fW = finalW;
 		float fH = finalH;
 
+		// precompute some values
+		double[] precomputedCosPhi = new double[finalH];
+		double[] precomputedSinPhi = new double[finalH];
+		for (int j = 0; j < finalH; j++) {
+			// value range from -1 to 1
+			float v = 2 * j / fH - 1;
+
+			// convert to horizontal and vertical angle
+			double phi = v * Math.PI / 2;
+
+			precomputedCosPhi[j] = Math.cos(phi);
+			precomputedSinPhi[j] = Math.sin(phi);
+		}
+
+		double[] precomputedCosTheta = new double[finalW];
+		double[] precomputedSinTheta = new double[finalW];
+		for (int i = 0; i < finalW; i++) {
+			// value range from -1 to 1
+			float u = 2 * i / fW - 1;
+
+			// convert to horizontal and vertical angle
+			double theta = u * Math.PI;
+			
+			precomputedCosTheta[i] = Math.cos(theta);
+			precomputedSinTheta[i] = Math.sin(theta);
+		}
+
+		BufferedImage imOutput = new BufferedImage(finalW, finalH, BufferedImage.TYPE_INT_RGB);
+		WritableRaster raster = imOutput.getRaster();
+		System.out.println("Precompute took " + (System.currentTimeMillis() - startTime) + " ms");
+
+		startTime = System.currentTimeMillis();
 		for (int j = 0; j < finalH; j++) {
 			for (int i = 0; i < finalW; i++) {
-				// value range from -1 to 1
-				float u = 2 * i / fW - 1;
-				float v = 2 * j / fH - 1;
-
-				// convert to horizontal and vertical angle
-				double theta = u * Math.PI;
-				double phi = v * Math.PI / 2;
-
 				// find corresponding location on sphere (inside a cube)
-				double x = Math.cos(phi) * Math.cos(theta);
-				double y = Math.sin(phi);
-				double z = Math.cos(phi) * Math.sin(theta);
+				double x = precomputedCosPhi[j] * precomputedCosTheta[i];
+				double y = precomputedSinPhi[j];
+				double z = precomputedCosPhi[j] * precomputedSinTheta[i];
 
 				// find appropriate color from cube faces
 				int[] targetColor = findColor(imBack, imBottom, imFront, imLeft, imRight, imTop, w, h, x, y, z);
 
-				imOutput.getRaster().setPixel(i, j, targetColor);
+				raster.setPixel(i, j, targetColor);
 			}
 		}
+		System.out.println("Conversion loop took " + (System.currentTimeMillis() - startTime) + " ms");
 
+		startTime = System.currentTimeMillis();
 		imOutput = smooth(imOutput);
+		System.out.println("Smoothing took " + (System.currentTimeMillis() - startTime) + " ms");
 
 		return imOutput;
 	}
 
-	private int[] findColor(BufferedImage imBack, BufferedImage imBottom, BufferedImage imFront, BufferedImage imLeft,
-			BufferedImage imRight, BufferedImage imTop, int w, int h, double x, double y, double z) {
+	private int[] findColor(
+		BufferedImage imBack,
+		BufferedImage imBottom,
+		BufferedImage imFront,
+		BufferedImage imLeft,
+		BufferedImage imRight,
+		BufferedImage imTop,
+		int w,
+		int h,
+		double x,
+		double y,
+		double z
+	) {
 		BufferedImage target;
 		double absX = Math.abs(x);
 		double absY = Math.abs(y);
@@ -145,8 +190,12 @@ public class Cube2Erect {
 	private BufferedImage smooth(BufferedImage before) {
 		// scale down help reducing aliasing effect
 		double scale = 0.5;
-		BufferedImage after = new BufferedImage((int) (before.getWidth() * scale), (int) (before.getHeight() * scale),
-				BufferedImage.TYPE_INT_RGB);
+		BufferedImage after = new BufferedImage(
+			(int) (before.getWidth() * scale),
+			(int) (before.getHeight() * scale),
+			BufferedImage.TYPE_INT_RGB
+		);
+
 		AffineTransform at = new AffineTransform();
 		at.scale(scale, scale);
 		AffineTransformOp scaleOp = new AffineTransformOp(at, AffineTransformOp.TYPE_BILINEAR);
@@ -160,12 +209,9 @@ public class Cube2Erect {
 		if (doAvgColor && xx > 0 && xx < w - 1 && yy > 0 && yy < h - 1) {
 			int[] color = new int[27];
 			target.getRaster().getPixels(xx - 1, yy - 1, 3, 3, color);
-			targetColor[0] = (color[0] + color[3] + color[6] + color[9] + color[12] + color[15] + color[18] + color[21]
-					+ color[24]) / 9;
-			targetColor[1] = (color[1] + color[4] + color[7] + color[10] + color[13] + color[16] + color[19] + color[22]
-					+ color[25]) / 9;
-			targetColor[2] = (color[2] + color[5] + color[8] + color[11] + color[14] + color[17] + color[20] + color[23]
-					+ color[26]) / 9;
+			targetColor[0] = (color[0] + color[3] + color[6] + color[9] + color[12] + color[15] + color[18] + color[21] + color[24]) / 9;
+			targetColor[1] = (color[1] + color[4] + color[7] + color[10] + color[13] + color[16] + color[19] + color[22] + color[25]) / 9;
+			targetColor[2] = (color[2] + color[5] + color[8] + color[11] + color[14] + color[17] + color[20] + color[23] + color[26]) / 9;
 		} else {
 			target.getRaster().getPixel(xx, yy, targetColor);
 		}
@@ -180,14 +226,20 @@ public class Cube2Erect {
 		try {
 			Cube2Erect c = new Cube2Erect();
 
+			long startTime = System.currentTimeMillis();
 			BufferedImage imBack = ImageIO.read(new File(args[0]));
 			BufferedImage imBottom = ImageIO.read(new File(args[1]));
 			BufferedImage imFront = ImageIO.read(new File(args[2]));
 			BufferedImage imLeft = ImageIO.read(new File(args[3]));
 			BufferedImage imRight = ImageIO.read(new File(args[4]));
 			BufferedImage imTop = ImageIO.read(new File(args[5]));
+			System.out.println("Read files took " + (System.currentTimeMillis() - startTime) + " ms");
+
 			BufferedImage bi = c.convert(imBack, imBottom, imFront, imLeft, imRight, imTop);
+
+			startTime = System.currentTimeMillis();
 			ImageIO.write(bi, "JPG", new File(args[6]));
+			System.out.println("Write file took " + (System.currentTimeMillis() - startTime) + " ms");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
