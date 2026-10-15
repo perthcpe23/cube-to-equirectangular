@@ -26,6 +26,7 @@ public class Cube2Erect {
 		BufferedImage imRight,
 		BufferedImage imTop
 	) throws IOException {
+		long start = System.currentTimeMillis();
 		int w = imBack.getWidth();
 		int h = imBack.getHeight();
 
@@ -69,7 +70,9 @@ public class Cube2Erect {
 			precomputedAbsCosTheta[i] = Math.abs(ct);
 			precomputedAbsSinTheta[i] = Math.abs(st);
 		}
+		System.out.println("Pre-computation took " + (System.currentTimeMillis() - start) + " ms");
 
+		start = System.currentTimeMillis();
 		int[][] facePixels = new int[6][];
 		BufferedImage[] inputImgs = {imBack, imBottom, imFront, imLeft, imRight, imTop};
 		int nThreads = Math.max(1, Runtime.getRuntime().availableProcessors());
@@ -137,9 +140,12 @@ public class Cube2Erect {
 				}
 			}
 		}
+		System.out.println("Rendering took " + (System.currentTimeMillis() - start) + " ms");
 
+		start = System.currentTimeMillis();
 		imOutput = smooth(imOutput);
-
+		System.out.println("Smoothing took " + (System.currentTimeMillis() - start) + " ms");
+		
 		return imOutput;
 	}
 
@@ -299,104 +305,7 @@ public class Cube2Erect {
 		}
 	}
 
-	private int[] findColor(
-		BufferedImage imBack,
-		BufferedImage imBottom,
-		BufferedImage imFront,
-		BufferedImage imLeft,
-		BufferedImage imRight,
-		BufferedImage imTop,
-		int w,
-		int h,
-		double x,
-		double y,
-		double z
-	) {
-		BufferedImage target;
-		double absX = Math.abs(x);
-		double absY = Math.abs(y);
-		double absZ = Math.abs(z);
-		int[] targetColor = new int[3];
-
-		if (absX > absY && absX > absZ) { // on left or right face
-			boolean isLeft = x < 0;
-
-			// intersection point on x plane
-			z /= absX;
-			y /= absX;
-
-			if (isLeft) {
-				z = -z;
-			}
-
-			int xx = (int) (((z + 1) * w) / 2);
-			int yy = (int) (((y + 1) * h) / 2);
-
-			xx = Math.max(0, Math.min(w - 1, xx));
-			yy = Math.max(0, Math.min(h - 1, yy));
-
-			if (isLeft) {
-				target = imLeft;
-			} else {
-				target = imRight;
-			}
-
-			selectColor(w, h, targetColor, target, xx, yy);
-		} else if (absY > absX && absY > absZ) { // on top or bottom face
-			boolean isTop = y < 0;
-
-			// intersection point on y plane
-			z /= absY;
-			x /= absY;
-
-			if (isTop) {
-				z = -z;
-			}
-
-			int xx = (int) (((x + 1) * w) / 2);
-			int yy = (int) (((z + 1) * h) / 2);
-
-			xx = Math.max(0, Math.min(w - 1, xx));
-			yy = Math.max(0, Math.min(h - 1, yy));
-
-			if (isTop) {
-				target = imTop;
-			} else {
-				target = imBottom;
-			}
-
-			selectColor(w, h, targetColor, target, xx, yy);
-		} else { // on front or back face
-			boolean isFront = z < 0;
-
-			// intersection point on z plane
-			y /= absZ;
-			x /= absZ;
-
-			if (!isFront) {
-				x = -x;
-			}
-
-			int xx = (int) Math.round(((x + 1) * w) / 2);
-			int yy = (int) Math.round(((y + 1) * h) / 2);
-
-			xx = Math.max(0, Math.min(w - 1, xx));
-			yy = Math.max(0, Math.min(h - 1, yy));
-
-			if (isFront) {
-				target = imFront;
-			} else {
-				target = imBack;
-			}
-
-			selectColor(w, h, targetColor, target, xx, yy);
-		}
-		return targetColor;
-	}
-
 	private BufferedImage smooth(BufferedImage before) {
-		long start = System.currentTimeMillis();
-
 		// scale down help reducing aliasing effect
 		double scale = 0.5;
 		BufferedImage after = new BufferedImage(
@@ -410,21 +319,7 @@ public class Cube2Erect {
 		AffineTransformOp scaleOp = new AffineTransformOp(at, AffineTransformOp.TYPE_BILINEAR);
 		after = scaleOp.filter(before, after);
 		
-		System.out.println("Smoothing took " + (System.currentTimeMillis() - start) + " ms");
 		return after;
-	}
-
-	// 3x3 average color
-	private void selectColor(int w, int h, int[] targetColor, BufferedImage target, int xx, int yy) {
-		if (doAvgColor && xx > 0 && xx < w - 1 && yy > 0 && yy < h - 1) {
-			int[] color = new int[27];
-			target.getRaster().getPixels(xx - 1, yy - 1, 3, 3, color);
-			targetColor[0] = (color[0] + color[3] + color[6] + color[9] + color[12] + color[15] + color[18] + color[21] + color[24]) / 9;
-			targetColor[1] = (color[1] + color[4] + color[7] + color[10] + color[13] + color[16] + color[19] + color[22] + color[25]) / 9;
-			targetColor[2] = (color[2] + color[5] + color[8] + color[11] + color[14] + color[17] + color[20] + color[23] + color[26]) / 9;
-		} else {
-			target.getRaster().getPixel(xx, yy, targetColor);
-		}
 	}
 
 	public static void main(String args[]) {
@@ -467,14 +362,12 @@ public class Cube2Erect {
 					}
 				}
 			}
-
 			System.out.println("Read files took " + (System.currentTimeMillis() - start) + " ms");
+			
 			start = System.currentTimeMillis();
-
 			BufferedImage bi = c.convert(images[0], images[1], images[2], images[3], images[4], images[5]);
-			System.out.println("Conversion took " + (System.currentTimeMillis() - start) + " ms");
+			
 			start = System.currentTimeMillis();
-
 			ImageIO.write(bi, "JPG", new File(args[6]));
 			System.out.println("Writing output took " + (System.currentTimeMillis() - start) + " ms");
 		} catch (IOException e) {
