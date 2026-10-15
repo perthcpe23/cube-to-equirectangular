@@ -70,12 +70,11 @@ public class Cube2Erect {
 			precomputedAbsCosTheta[i] = Math.abs(ct);
 			precomputedAbsSinTheta[i] = Math.abs(st);
 		}
-		System.out.println("Pre-computation took " + (System.currentTimeMillis() - start) + " ms");
 
-		start = System.currentTimeMillis();
 		int[][] facePixels = new int[6][];
 		BufferedImage[] inputImgs = {imBack, imBottom, imFront, imLeft, imRight, imTop};
 		int nThreads = Math.max(1, Runtime.getRuntime().availableProcessors());
+		System.out.println("Thread count = " + nThreads);
 
 		if (nThreads > 1) {
 			Thread[] extractThreads = new Thread[6];
@@ -109,7 +108,9 @@ public class Cube2Erect {
 
 		BufferedImage imOutput = new BufferedImage(finalW, finalH, BufferedImage.TYPE_INT_RGB);
 		int[] outPixels = ((DataBufferInt) imOutput.getRaster().getDataBuffer()).getData();
+		System.out.println("Pre-computation took " + (System.currentTimeMillis() - start) + " ms");
 
+		start = System.currentTimeMillis();
 		if (nThreads == 1) {
 			renderRows(0, finalH, finalW, w, h, precomputedCosPhi, precomputedSinPhi,
 			           precomputedCosTheta, precomputedSinTheta, precomputedAbsCosTheta, precomputedAbsSinTheta,
