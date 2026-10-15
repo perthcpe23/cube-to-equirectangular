@@ -25,6 +25,8 @@ public class Cube2Erect {
 		BufferedImage imRight,
 		BufferedImage imTop
 	) throws IOException {
+		long startTime = System.currentTimeMillis();
+
 		int w = imBack.getWidth();
 		int h = imBack.getHeight();
 
@@ -65,7 +67,9 @@ public class Cube2Erect {
 
 		BufferedImage imOutput = new BufferedImage(finalW, finalH, BufferedImage.TYPE_INT_RGB);
 		WritableRaster raster = imOutput.getRaster();
+		System.out.println("Precompute took " + (System.currentTimeMillis() - startTime) + " ms");
 
+		startTime = System.currentTimeMillis();
 		for (int j = 0; j < finalH; j++) {
 			for (int i = 0; i < finalW; i++) {
 				// find corresponding location on sphere (inside a cube)
@@ -79,8 +83,11 @@ public class Cube2Erect {
 				raster.setPixel(i, j, targetColor);
 			}
 		}
+		System.out.println("Conversion loop took " + (System.currentTimeMillis() - startTime) + " ms");
 
+		startTime = System.currentTimeMillis();
 		imOutput = smooth(imOutput);
+		System.out.println("Smoothing took " + (System.currentTimeMillis() - startTime) + " ms");
 
 		return imOutput;
 	}
@@ -219,14 +226,20 @@ public class Cube2Erect {
 		try {
 			Cube2Erect c = new Cube2Erect();
 
+			long startTime = System.currentTimeMillis();
 			BufferedImage imBack = ImageIO.read(new File(args[0]));
 			BufferedImage imBottom = ImageIO.read(new File(args[1]));
 			BufferedImage imFront = ImageIO.read(new File(args[2]));
 			BufferedImage imLeft = ImageIO.read(new File(args[3]));
 			BufferedImage imRight = ImageIO.read(new File(args[4]));
 			BufferedImage imTop = ImageIO.read(new File(args[5]));
+			System.out.println("Read files took " + (System.currentTimeMillis() - startTime) + " ms");
+
 			BufferedImage bi = c.convert(imBack, imBottom, imFront, imLeft, imRight, imTop);
+
+			startTime = System.currentTimeMillis();
 			ImageIO.write(bi, "JPG", new File(args[6]));
+			System.out.println("Write file took " + (System.currentTimeMillis() - startTime) + " ms");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
